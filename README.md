@@ -15,7 +15,7 @@ service-producer ─▶ service-kafka (topic iot.mesures, 6 partitions, clé = c
 Prérequis : Docker 24+, Docker Compose v2, accès Internet au premier build (jars Kafka, images).
 
 ```bash
-git clone <url-du-depot> && cd iot-platform
+git clone https://github.com/ABBACHE-Aghiles/iot-platform.git && cd iot-platform
 cp .env.example .env            # optionnel : les valeurs par défaut suffisent
 docker compose up --build -d
 docker compose ps               # attendre que tout soit "healthy" (Airflow : ~2 min)
