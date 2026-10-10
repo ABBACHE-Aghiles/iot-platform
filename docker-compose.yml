@@ -1,0 +1,178 @@
+name: iot-platform   # nom de projet fixe : les conteneurs s'appellent iot-platform-<service>-<n>
+
+x-mongo-url: &mongo_url MONGO_URL=${MONGO_URL:-mongodb://service-db:27017/iot}
+
+services:
+  # ---------------------------------------------------------------- Kafka (KRaft, sans ZooKeeper)
+  service-kafka:
+    image: confluentinc/cp-kafka:7.6.0
+    environment:
+      CLUSTER_ID: ${KAFKA_CLUSTER_ID:-MkU3OEVBNTcwNTJENDM2Qk}
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@service-kafka:9093
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://service-kafka:9092
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_INTER_BROKER_LISTENER_NAME: PLAINTEXT
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
+      KAFKA_AUTO_CREATE_TOPICS_ENABLE: "false"   # le topic est créé explicitement (6 partitions)
+    volumes:
+      - kafka-data:/var/lib/kafka/data           # les messages survivent à un redémarrage du broker
+    healthcheck:
+      test: ["CMD", "kafka-topics", "--bootstrap-server", "localhost:9092", "--list"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    networks: [iot-net]
+
+  # Job éphémère : crée le topic iot.mesures avec 6 partitions (idempotent) puis s'arrête.
+  kafka-init:
+    image: confluentinc/cp-kafka:7.6.0
+    command: ["kafka-topics", "--bootstrap-server", "service-kafka:9092", "--create", "--if-not-exists",
+              "--topic", "${KAFKA_TOPIC:-iot.mesures}", "--partitions", "6", "--replication-factor", "1"]
+    depends_on:
+      service-kafka: { condition: service_healthy }
+    restart: "no"
+    networks: [iot-net]
+
+  # ---------------------------------------------------------------- Producteur
+  service-producer:
+    build: ./producer
+    environment:
+      - KAFKA_BOOTSTRAP=service-kafka:9092
+      - KAFKA_TOPIC=${KAFKA_TOPIC:-iot.mesures}
+      - NB_CAPTEURS=${NB_CAPTEURS:-10}
+      - INTERVAL_MS=${INTERVAL_MS:-500}
+      - ANOMALY_EVERY_S=${ANOMALY_EVERY_S:-45}
+    depends_on:
+      service-kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/heartbeat -mmin -1 | grep -q ."]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 30s
+    networks: [iot-net]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- Spark Structured Streaming
+  service-spark:
+    build: ./spark
+    # pas de container_name : le service doit pouvoir être scalé
+    # scaling : SPARK_REPLICAS=2 docker compose up -d --scale service-spark=2
+    environment:
+      - KAFKA_BOOTSTRAP=service-kafka:9092
+      - KAFKA_TOPIC=${KAFKA_TOPIC:-iot.mesures}
+      - NUM_PARTITIONS=6
+      - SPARK_REPLICAS=${SPARK_REPLICAS:-1}
+      - ANOMALY_DETECTOR=${ANOMALY_DETECTOR:-sigma}   # bonus : sigma (spec 3.2) ou ewma
+      - *mongo_url
+      - CHECKPOINT_DIR=/checkpoints
+    volumes:
+      # Offsets Kafka + état des fenêtres : sans ce volume, un redémarrage repartirait de zéro
+      # (perte de l'état / retraitement complet). Il doit survivre à `docker kill`.
+      - spark-checkpoints:/checkpoints
+    depends_on:
+      service-kafka: { condition: service_healthy }
+      kafka-init: { condition: service_completed_successfully }
+      service-db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "find /tmp/heartbeat -mmin -1 | grep -q ."]
+      interval: 15s
+      timeout: 5s
+      retries: 3
+      start_period: 90s
+    networks: [iot-net]
+    restart: unless-stopped
+
+  # ---------------------------------------------------------------- MongoDB
+  service-db:
+    image: mongo:7.0
+    ports: ["27017:27017"]
+    volumes:
+      - mongo-data:/data/db          # sans lui, toutes les données disparaissent avec le conteneur
+    healthcheck:
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks: [iot-net]
+
+  # ---------------------------------------------------------------- Airflow
+  service-airflow:
+    build: ./airflow
+    command: standalone
+    ports: ["8080:8080"]
+    environment:
+      - *mongo_url
+      - DATA_LAKE_DIR=/opt/airflow/data-lake
+      - ALERT_LOG_PATH=/opt/airflow/logs/alertes_airflow.log
+      - DAILY_MIN_MEASURES=${DAILY_MIN_MEASURES:-1000}
+      - RETRY_DELAY_S=${RETRY_DELAY_S:-30}
+    volumes:
+      - data-lake:/opt/airflow/data-lake
+      - airflow-logs:/opt/airflow/logs
+    depends_on:
+      service-db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8080/health >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 10
+      start_period: 120s
+    networks: [iot-net]
+
+  # ---------------------------------------------------------------- API
+  service-api:
+    build: ./api
+    ports: ["3001:3001"]
+    environment:
+      - *mongo_url
+      - DATA_LAKE_DIR=/data-lake
+    volumes:
+      - data-lake:/data-lake:ro      # bonus DuckDB : l'API lit les fichiers Parquet (lecture seule)
+    depends_on:
+      service-db: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request as u; u.urlopen('http://localhost:3001/health', timeout=3)"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks: [iot-net]
+
+  # ---------------------------------------------------------------- Bonus : reverse proxy + dashboard
+  service-nginx:
+    build:
+      context: .
+      dockerfile: nginx/Dockerfile
+    ports: ["8081:8081"]              # http://localhost:8081 -> dashboard ; /api/* -> service-api
+    depends_on:
+      service-api: { condition: service_healthy }
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8081/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
+    networks: [iot-net]
+    restart: unless-stopped
+
+volumes:
+  kafka-data:
+  mongo-data:
+  spark-checkpoints:
+  data-lake:
+  airflow-logs:
+
+networks:
+  iot-net:
+    driver: bridge

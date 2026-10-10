@@ -1,0 +1,30 @@
+:root{--bg:#EEF5F2;--card:#fff;--ink:#16302A;--mute:#5B6F68;--dark:#04352A;--mint:#18C79A;--warn:#E0703A;--line:#d5e4de}
+@media (prefers-color-scheme:dark){:root{--bg:#0d1f1a;--card:#14302a;--ink:#e6f2ee;--mute:#9bb5ac;--line:#244a41}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 system-ui,"Segoe UI",Roboto,sans-serif}
+main{max-width:1200px;margin:0 auto;padding:20px 16px 40px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+.kicker{margin:0;color:var(--mint);font-size:12px;letter-spacing:.12em;text-transform:uppercase;font-weight:600}
+h1{margin:2px 0 0;font:700 28px Cambria,Georgia,serif}
+h2{margin:0 0 6px;font-size:16px}h2 span{color:var(--mute);font-weight:400}
+.status{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--mute)}
+.status small{margin-left:6px}
+.dot{width:10px;height:10px;border-radius:50%;background:var(--warn)}
+.status.on .dot{background:var(--mint);box-shadow:0 0 0 4px rgba(24,199,154,.25)}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--line);border-left:4px solid var(--mint);border-radius:8px;padding:10px 14px}
+.kpi.warn{border-left-color:var(--warn)}
+.kpi b{display:block;font-size:26px}.kpi span{color:var(--mute);font-size:13px}
+nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px}
+nav button{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:6px;padding:6px 12px;cursor:pointer;font:inherit}
+nav button.sel{background:var(--dark);color:#fff;border-color:var(--dark)}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:12px}
+article,.alerts{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:14px}
+.big{margin:0;font-size:30px;font-weight:700}.big small{font-size:12px;font-weight:400;color:var(--mute)}
+.mm{margin:0 0 6px;color:var(--mute);font-size:12px}
+svg{width:100%;height:auto}.grid{stroke:var(--line)}.tick{fill:var(--mute);font-size:10px}
+.empty{color:var(--mute);padding:20px 0}
+.alerts{margin-top:12px}
+table{width:100%;border-collapse:collapse}th,td{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line)}
+th{color:var(--mute);font-weight:600;font-size:12px}
+@media(max-width:600px){.kpis{grid-template-columns:1fr}}

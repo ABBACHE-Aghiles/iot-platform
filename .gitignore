@@ -1,0 +1,12 @@
+node_modules/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+.env
+checkpoints/
+**/checkpoint*/
+data-lake/
+.idea/
+.vscode/

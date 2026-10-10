@@ -1,0 +1,21 @@
+2026-10-09T09:08:34.489581+00:00 | DEBUT                              | topic=iot.mesures bootstrap=service-kafka:9092
+2026-10-09T09:08:34.491173+00:00 | RETARD 5s (attendu: intégré)       | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.0, "event_time": 1791536909489}
+2026-10-09T09:08:34.491361+00:00 | RETARD 15s (attendu: intégré)      | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.01, "event_time": 1791536899491}
+2026-10-09T09:08:34.491462+00:00 | RETARD 30s (attendu: intégré)      | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.02, "event_time": 1791536884491}
+2026-10-09T09:08:34.491579+00:00 | RETARD 45s (attendu: intégré)      | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.03, "event_time": 1791536869491}
+2026-10-09T09:08:34.491685+00:00 | RETARD 90s (attendu: écarté)       | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.05, "event_time": 1791536824491}
+2026-10-09T09:08:34.491768+00:00 | RETARD 300s (attendu: écarté)      | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.05, "event_time": 1791536614491}
+2026-10-09T09:08:34.491945+00:00 | DESORDRE t-1s (attendu: intégré)   | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.0, "event_time": 1791536913491}
+2026-10-09T09:08:34.492057+00:00 | DESORDRE t-6s (attendu: intégré)   | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.02, "event_time": 1791536908491}
+2026-10-09T09:08:34.492182+00:00 | DESORDRE t-3s (attendu: intégré)   | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.04, "event_time": 1791536911491}
+2026-10-09T09:08:34.492264+00:00 | DESORDRE t-8s (attendu: intégré)   | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.06, "event_time": 1791536906491}
+2026-10-09T09:08:34.493413+00:00 | DOUBLON 1/2                        | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.123, "event_time": 1791536912493}
+2026-10-09T09:08:34.493526+00:00 | DOUBLON 2/2 (attendu: 1 seul compté) | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 20.123, "event_time": 1791536912493}
+2026-10-09T09:08:34.493670+00:00 | MALFORME json invalide             | {"capteur_id": "capteur-1", "type": "temperature",
+2026-10-09T09:08:34.494107+00:00 | MALFORME champ manquant (valeur)   | {"capteur_id": "capteur-1", "type": "temperature", "event_time": 1791536914493}
+2026-10-09T09:08:34.496652+00:00 | MALFORME valeur non numérique      | {"capteur_id": "capteur-1", "type": "temperature", "valeur": "abc", "event_time": 1791536914493}
+2026-10-09T09:08:34.496850+00:00 | MALFORME valeur null               | {"capteur_id": "capteur-1", "type": "temperature", "valeur": null, "event_time": 1791536914493}
+2026-10-09T09:08:34.497467+00:00 | MALFORME type inconnu              | {"capteur_id": "capteur-1", "type": "pression", "valeur": 1.0, "event_time": 1791536914493}
+2026-10-09T09:08:34.498208+00:00 | MALFORME pas un objet JSON         | [1, 2, 3]
+2026-10-09T09:08:34.498607+00:00 | ANOMALIE (attendu: alerte active)  | {"capteur_id": "capteur-1", "type": "temperature", "valeur": 32.0, "event_time": 1791536914498}
+2026-10-09T09:08:34.501820+00:00 | FIN                                | tout est publié (kafka-python : flush OK)

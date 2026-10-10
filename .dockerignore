@@ -1,0 +1,6 @@
+.git
+data-lake
+**/__pycache__
+dashboard/src
+tests
+README.md
